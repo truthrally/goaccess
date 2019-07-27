@@ -40,6 +40,7 @@
 #endif
 #include <sys/types.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "error.h"
 #include "labels.h"
@@ -55,7 +56,7 @@ void
 dbg_log_open (const char *path)
 {
   if (path != NULL) {
-    log_file = fopen (path, "w");
+    log_file = fopen (path, "a");
     if (log_file == NULL)
       return;
   }
@@ -75,7 +76,7 @@ void
 invalid_log_open (const char *path)
 {
   if (path != NULL) {
-    log_invalid = fopen (path, "w");
+    log_invalid = fopen (path, "a");
     if (log_invalid == NULL)
       return;
   }
@@ -178,6 +179,18 @@ sigsegv_handler (int sig)
   exit (EXIT_FAILURE);
 }
 
+/* Write current time to specified file, in the style of UNIX system logs. */
+static void
+print_timestamp (FILE *file)
+{
+  char buf[32];
+  time_t now;
+
+  time (&now);
+  if (strftime (buf, sizeof (buf), "%h %e %T ", localtime (&now)))
+    fputs (buf, file);
+}
+
 #pragma GCC diagnostic ignored "-Wformat-nonliteral"
 /* Write formatted debug log data to the logfile. */
 void
@@ -187,6 +200,8 @@ dbg_fprintf (const char *fmt, ...)
 
   if (!log_file)
     return;
+
+  print_timestamp (log_file);
 
   va_start (args, fmt);
   vfprintf (log_file, fmt, args);
@@ -202,6 +217,8 @@ invalid_fprintf (const char *fmt, ...)
 
   if (!log_invalid)
     return;
+
+  print_timestamp (log_invalid);
 
   va_start (args, fmt);
   vfprintf (log_invalid, fmt, args);
